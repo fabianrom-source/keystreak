@@ -1,5 +1,5 @@
 // Keystreak service worker: the app works offline after its first load.
-const CACHE = 'keystreak-v6';
+const CACHE = 'keystreak-v7';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

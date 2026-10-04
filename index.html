@@ -39,6 +39,7 @@
   --shadow:rgba(36,28,84,.22);
   --scrim:rgba(14,12,28,.45);
   --bar:rgba(230,229,238,.88);
+  --cell0:color-mix(in srgb,var(--ink) 9%,var(--case));
   --font-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
   --font-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
 }
@@ -161,12 +162,12 @@ button{font-family:inherit}
 
 /* ===== HABITS (status display + keys) ===== */
 .display{background:var(--panel);color:var(--panel-ink);border-radius:18px;padding:16px 16px 14px;display:flex;flex-direction:column;gap:12px;box-shadow:0 14px 28px -18px var(--shadow)}
-.disp-top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.disp-top{display:flex;justify-content:space-between;align-items:stretch;gap:12px}
 .lv-line{display:flex;align-items:baseline;gap:10px}
 .lv-num{font:800 58px/.86 var(--font-display);letter-spacing:-.045em;font-variant-numeric:tabular-nums}
 .lv-rank{font:600 15px/1 var(--font-display);color:var(--gold)}
-.ps{text-align:right}
-.ps-line{display:inline-flex;align-items:center;gap:4px;font:800 34px/.9 var(--font-display);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.ps{text-align:right;display:flex;flex-direction:column}
+.ps-line{flex:1;display:flex;justify-content:flex-end;align-items:flex-end;gap:4px;font:800 34px/.9 var(--font-display);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .ps-line svg{width:26px;height:26px;color:var(--signal)}
 .ps-line.cold svg{color:var(--panel-muted)}
 .meter{display:grid;grid-template-columns:repeat(24,1fr);gap:3px;height:14px}
@@ -179,7 +180,7 @@ button{font-family:inherit}
 .pastbar{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--signal);color:var(--signal-ink);border-radius:12px;padding:10px 10px 10px 14px;font:600 14px/1.3 var(--font-display)}
 .pastbar button{font:700 13px/1 var(--font-display);color:var(--ink);background:var(--key);border:0;border-radius:9px;padding:9px 11px;cursor:pointer;box-shadow:0 2px 0 var(--signal-deep);white-space:nowrap}
 .notes{display:flex;gap:5px;margin:-4px 0 12px;flex-wrap:wrap}
-.notes i{width:10px;height:10px;border-radius:50%;background:var(--deck);box-shadow:inset 0 1px 2px var(--shadow)}
+.notes i{width:10px;height:10px;border-radius:50%;background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
 .notes i.on{background:var(--signal);box-shadow:0 0 6px -1px var(--signal)}
 .keys{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:16px 12px;padding:14px 14px 18px;background:var(--deck);border-radius:20px;box-shadow:inset 0 2px 8px var(--shadow)}
 .key{--hc:#888;--hc-ink:#fff;position:relative;appearance:none;border:0;cursor:pointer;text-align:left;color:var(--ink);background:var(--key);border-radius:14px;min-height:108px;padding:12px 12px 11px;display:flex;flex-direction:column;justify-content:space-between;gap:10px;
@@ -193,8 +194,11 @@ button{font-family:inherit}
 .key-name{font-weight:600;font-size:16.5px;line-height:1.2;letter-spacing:-.01em;overflow-wrap:anywhere;min-width:0}
 .key-legend{display:flex;align-items:center;gap:6px;flex:none;font:500 10.5px/1 var(--font-mono);color:var(--muted);margin-top:3px}
 .key.on .key-legend{color:color-mix(in srgb,var(--hc-ink) 70%,transparent)}
-.led{width:8px;height:8px;border-radius:50%;background:color-mix(in srgb,var(--hc) 40%,var(--key))}
-.key.on .led{background:var(--hc-ink);box-shadow:0 0 8px 1px color-mix(in srgb,var(--hc-ink) 70%,transparent)}
+.led{width:18px;height:18px;border-radius:50%;border:2px solid color-mix(in srgb,var(--hc) 60%,var(--key));display:grid;place-items:center;color:var(--hc)}
+.led svg{width:10px;height:10px;display:none}
+.key.on .led{background:var(--hc-ink);border-color:var(--hc-ink);box-shadow:0 0 8px 1px color-mix(in srgb,var(--hc-ink) 50%,transparent)}
+.key.on .led svg{display:block}
+@media (hover:none){.key-num{display:none}}
 .key-bottom{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px 8px;font:500 12px/1 var(--font-mono);color:var(--muted);font-variant-numeric:tabular-nums}
 .key.on .key-bottom{color:color-mix(in srgb,var(--hc-ink) 85%,transparent)}
 .key-streak{display:inline-flex;align-items:center;gap:3px}
@@ -211,28 +215,31 @@ button{font-family:inherit}
 @keyframes ringcrit{0%{opacity:1;box-shadow:0 0 0 0 var(--gold)}100%{opacity:0;box-shadow:0 0 0 30px var(--gold)}}
 
 .week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
-.day{appearance:none;border:0;background:var(--key);color:var(--ink);border-radius:12px;padding:9px 0 9px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;box-shadow:inset 0 1px 0 var(--key-edge),0 3px 0 var(--key-skirt);min-width:0;touch-action:manipulation}
+.day{appearance:none;border:0;background:var(--key);color:var(--ink);border-radius:12px;padding:9px 0 9px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;box-shadow:inset 0 1px 0 var(--key-edge),0 3px 0 var(--key-skirt);min-width:0;touch-action:manipulation}
 .day:active{transform:translateY(2px);box-shadow:0 1px 0 var(--key-skirt)}
 .day .dw{font:500 9.5px/1 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .day .dn{font:700 17px/1 var(--font-display);font-variant-numeric:tabular-nums}
-.day .bar{width:62%;height:4px;border-radius:2px;background:var(--deck);overflow:hidden}
+.day .bar{width:62%;height:4px;border-radius:2px;background:var(--cell0);overflow:hidden}
 .day .bar i{display:block;height:100%;background:var(--signal)}
 .day.perfect{background:var(--signal);color:var(--signal-ink);box-shadow:0 3px 0 var(--signal-deep)}
 .day.perfect .dw{color:var(--signal-ink)}
 .day.perfect .bar{background:rgba(255,255,255,.35)}
 .day.perfect .bar i{background:var(--signal-ink)}
-.day.sel{box-shadow:inset 0 1px 0 var(--key-edge),0 3px 0 var(--key-skirt),0 0 0 2px var(--ink)}
-.day.perfect.sel{box-shadow:0 3px 0 var(--signal-deep),0 0 0 2px var(--ink)}
+.day.sel{box-shadow:inset 0 0 0 2px var(--ink),0 3px 0 var(--key-skirt)}
+.day.perfect.sel{box-shadow:inset 0 0 0 2px var(--ink),0 3px 0 var(--signal-deep)}
+.day .ct{font:500 9.5px/1 var(--font-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.day.perfect .ct{color:var(--signal-ink)}
 .heat-wrap{overflow-x:auto}
 .heat{display:grid;grid-template-rows:repeat(7,auto);grid-auto-flow:column;grid-auto-columns:minmax(11px,1fr);gap:4px}
-.cell{aspect-ratio:1;border-radius:3px;background:var(--deck)}
-.cell.l1{background:color-mix(in srgb,var(--signal) 28%,var(--deck))}
-.cell.l2{background:color-mix(in srgb,var(--signal) 52%,var(--deck))}
-.cell.l3{background:color-mix(in srgb,var(--signal) 76%,var(--deck))}
+.cell{aspect-ratio:1;border-radius:3px;background:var(--cell0)}
+.cell.l1{background:color-mix(in srgb,var(--signal) 28%,var(--cell0))}
+.cell.l2{background:color-mix(in srgb,var(--signal) 52%,var(--cell0))}
+.cell.l3{background:color-mix(in srgb,var(--signal) 76%,var(--cell0))}
 .cell.l4{background:var(--signal)}
 .cell.on{background:var(--hc)}
 .heat-pick{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
 .heat-pick .chip{font-size:13.5px;padding:10px 12px;border-radius:10px}
+.heat-pick .chip[aria-pressed="true"]{transform:none;box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 30%,var(--hc)),0 4px 0 color-mix(in srgb,var(--hc) 55%,#000),0 0 18px -6px var(--hc)}
 .heat-count{margin:12px 0 0;font:500 11px/1 var(--font-mono);color:var(--muted)}
 .cell.today{box-shadow:0 0 0 1.5px var(--ink)}
 .cell.future{visibility:hidden}
@@ -244,8 +251,9 @@ button{font-family:inherit}
 .stats dd{margin:4px 0 0;font:800 26px/1 var(--font-display);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 @media (max-width:440px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .rules{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;max-width:62ch}
-.rules li{display:grid;grid-template-columns:84px 1fr;gap:12px;font-size:14.5px;line-height:1.4}
-.rules b{font:700 12.5px/1.6 var(--font-mono);color:var(--signal);font-variant-numeric:tabular-nums}
+.rules li{display:grid;grid-template-columns:96px 1fr;gap:12px;font-size:14.5px;line-height:1.4}
+.rules b{font:700 12px/1.7 var(--font-mono);color:var(--signal);font-variant-numeric:tabular-nums}
+.rules strong{font-weight:700}
 .sync{font:500 12px/1.4 var(--font-mono);color:var(--muted);margin:0}
 
 /* ===== INBOX ===== */
@@ -278,8 +286,9 @@ textarea.field{resize:vertical;min-height:84px;font:500 15px/1.45 var(--font-dis
 .cta:active{transform:translateY(4px);box-shadow:0 1px 0 var(--signal-deep)}
 .cta:disabled{opacity:.55;cursor:default;transform:none;box-shadow:0 5px 0 var(--signal-deep)}
 .data{display:flex;flex-direction:column;gap:12px}
-.data-actions{display:flex;flex-wrap:wrap;gap:10px}
+.data-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .data-actions .btn2{padding:13px 16px}
+.btn2.primary{background:var(--signal);color:var(--signal-ink);box-shadow:0 3px 0 var(--signal-deep)}
 .data-note{font:500 12.5px/1.45 var(--font-mono);color:var(--muted);margin:0;max-width:60ch}
 .data-note.warn{color:var(--signal)}
 .linkbtn{font:inherit;color:var(--signal);background:none;border:0;padding:0;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
@@ -433,17 +442,18 @@ textarea.field{resize:vertical;min-height:84px;font:500 15px/1.45 var(--font-dis
         <dl class="stats">
           <div><dt>Keys pressed</dt><dd id="stPress">0</dd></div>
           <div><dt>Perfect days</dt><dd id="stPerfect">0</dd></div>
-          <div><dt>Best streak</dt><dd id="stBest">0</dd></div>
+          <div><dt>Best perfect run</dt><dd id="stBest">0</dd></div>
           <div><dt>Tasks done</dt><dd id="stTasks">0</dd></div>
         </dl>
 
         <section aria-labelledby="rulesTitle">
           <div class="sh"><h2 id="rulesTitle">How XP works</h2></div>
           <ul class="rules">
-            <li><b>10 XP</b><span>for every habit you press.</span></li>
-            <li><b>Rest day</b><span>Miss one day and your streak survives. Miss two in a row, or a second day within the same week, and it resets.</span></li>
-            <li><b>+10 XP</b><span>Perfect-day bonus when every habit key is down.</span></li>
-            <li><b>Level up</b><span>Each level needs 100 XP more than the one before. Each key you press in a day plays the next note up the scale.</span></li>
+            <li><b>+10 XP</b><span>for every habit you press.</span></li>
+            <li><b>Perfect day</b><span>+10 XP bonus when every habit key is down.</span></li>
+            <li><b>Rest day</b><span>Miss one day and your streak survives. It resets if you miss <strong>two in a row</strong>, or a <strong>second day in the same week</strong>.</span></li>
+            <li><b>Level up</b><span>Each level needs 100 XP more than the one before.</span></li>
+            <li><b>Sound</b><span>Each key you press in a day plays the next note up the scale.</span></li>
           </ul>
         </section>
       </div>
@@ -467,7 +477,7 @@ textarea.field{resize:vertical;min-height:84px;font:500 15px/1.45 var(--font-dis
       <div class="sh" style="margin-bottom:0"><h2 id="dataTitle">Your data</h2></div>
       <p class="data-note" id="backupNote">Your habits and plans live on this phone only. Save a backup now and then.</p>
       <div class="data-actions">
-        <button type="button" class="btn2" id="exportBtn">Save backup</button>
+        <button type="button" class="btn2 primary" id="exportBtn">Save backup</button>
         <button type="button" class="btn2" id="importBtn">Restore backup</button>
       </div>
       <div class="confirm" id="confirmBox" hidden>
@@ -477,7 +487,7 @@ textarea.field{resize:vertical;min-height:84px;font:500 15px/1.45 var(--font-dis
           <button type="button" class="btn2" id="confirmNo">Cancel</button>
         </div>
       </div>
-      <p class="sync" id="sync">Saved on this device.</p>
+      <p class="sync" id="sync">Progress saves automatically on this device.</p>
     </section>
   </section>
 
@@ -1269,7 +1279,7 @@ function renderKeys(){
     let el = keyEls.get(h.id);
     if (!el){
       el = document.createElement('button'); el.type = 'button'; el.className = 'key';
-      el.innerHTML = '<span class="ring"></span><span class="key-top"><span class="key-name"></span><span class="key-legend"><span class="key-num"></span><span class="led"></span></span></span><span class="key-bottom"><span class="key-streak"></span><span class="key-xp"></span></span>';
+      el.innerHTML = '<span class="ring"></span><span class="key-top"><span class="key-name"></span><span class="key-legend"><span class="key-num"></span><span class="led">'+CHECK+'</span></span></span><span class="key-bottom"><span class="key-streak"></span><span class="key-xp"></span></span>';
       const id = h.id; el.addEventListener('click', () => press(id));
       keyEls.set(h.id, el);
     }
@@ -1304,7 +1314,7 @@ function renderWeek(){
     b.className = 'day' + (d === selDate ? ' sel' : '') + (isPerfect(d) ? ' perfect' : '');
     b.setAttribute('aria-label', fmtLong(d) + ': ' + done + ' of ' + tot + ' done');
     if (d === selDate) b.setAttribute('aria-current', 'date');
-    b.innerHTML = '<span class="dw">' + (i === 0 ? 'Today' : WD[dt.getDay()]) + '</span><span class="dn">' + dt.getDate() + '</span><span class="bar"><i style="width:' + (tot ? Math.round(done / tot * 100) : 0) + '%"></i></span>';
+    b.innerHTML = '<span class="dw">' + (i === 0 ? 'Today' : WD[dt.getDay()]) + '</span><span class="dn">' + dt.getDate() + '</span><span class="bar"><i style="width:' + (tot ? Math.round(done / tot * 100) : 0) + '%"></i></span><span class="ct">' + done + '/' + tot + '</span>';
     b.addEventListener('click', () => { selDate = d; renderHabits(); });
     w.appendChild(b);
   }
@@ -1327,7 +1337,7 @@ function renderHeat(){
   [grid, $('#heatLegend')].forEach(el => el.style.setProperty('--hc', one ? pal(one.color).hex : 'var(--signal)'));
   $('#heatLegend').innerHTML = one
     ? 'Missed <span class="cell"></span><span class="cell on"></span> Done'
-    : 'Less <span class="cell"></span><span class="cell l1"></span><span class="cell l2"></span><span class="cell l3"></span><span class="cell l4"></span> All';
+    : 'Less <span class="cell"></span><span class="cell l1"></span><span class="cell l2"></span><span class="cell l3"></span><span class="cell l4"></span> More';
   const tot = habits.length, dow = (parse(today).getDay() + 6) % 7; let d = addDays(today, -dow - 15 * 7), count = 0;
   for (let i = 0; i < 16 * 7; i++){
     const c = document.createElement('span'); c.className = 'cell';
@@ -1383,7 +1393,7 @@ function press(hid){
 function renderHabits(){
   const hasBoard = active().length > 0;
   $('#app').hidden = !hasBoard; $('#onboard').hidden = hasBoard;
-  $('#sync').textContent = storageBlocked ? 'Storage is blocked here, so progress resets when you close this page.' : 'Saved on this device.';
+  $('#sync').textContent = storageBlocked ? 'Storage is blocked here, so progress resets when you close this page.' : 'Progress saves automatically on this device.';
   renderBackupNote();
   if (!hasBoard){ renderOnboard(); return; }
   if (selDate > today) selDate = today;
