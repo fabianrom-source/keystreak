@@ -230,6 +230,10 @@ button{font-family:inherit}
 .cell.l2{background:color-mix(in srgb,var(--signal) 52%,var(--deck))}
 .cell.l3{background:color-mix(in srgb,var(--signal) 76%,var(--deck))}
 .cell.l4{background:var(--signal)}
+.cell.on{background:var(--hc)}
+.heat-pick{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.heat-pick .chip{font-size:13.5px;padding:10px 12px;border-radius:10px}
+.heat-count{margin:12px 0 0;font:500 11px/1 var(--font-mono);color:var(--muted)}
 .cell.today{box-shadow:0 0 0 1.5px var(--ink)}
 .cell.future{visibility:hidden}
 .legend{display:flex;align-items:center;gap:4px;font:500 11px/1 var(--font-mono);color:var(--muted)}
@@ -419,9 +423,11 @@ textarea.field{resize:vertical;min-height:84px;font:500 15px/1.45 var(--font-dis
 
         <section aria-labelledby="heatTitle">
           <div class="sh"><h2 id="heatTitle">Last 16 weeks</h2>
-            <span class="legend" aria-hidden="true">Less <span class="cell"></span><span class="cell l1"></span><span class="cell l2"></span><span class="cell l3"></span><span class="cell l4"></span> All</span>
+            <span class="legend" id="heatLegend" aria-hidden="true"></span>
           </div>
+          <div class="heat-pick" id="heatPick" role="group" aria-label="Choose calendar"></div>
           <div class="heat-wrap"><div class="heat" id="heat"></div></div>
+          <p class="heat-count" id="heatCount"></p>
         </section>
 
         <dl class="stats">
@@ -434,12 +440,9 @@ textarea.field{resize:vertical;min-height:84px;font:500 15px/1.45 var(--font-dis
         <section aria-labelledby="rulesTitle">
           <div class="sh"><h2 id="rulesTitle">How XP works</h2></div>
           <ul class="rules">
-            <li><b>10 XP</b><span>for every habit you press, plus 2 XP for each day of that habit's current streak, up to +20.</span></li>
-            <li><b>10 XP</b><span>for every task you complete, plus 5 XP for each 30 minutes of planned time, up to +20.</span></li>
-            <li><b>CRIT ×2</b><span>Every press has a 15% chance to double its XP.</span></li>
-            <li><b>JACKPOT ×5</b><span>and a 3% chance to multiply it by five.</span></li>
-            <li><b>+50 XP</b><span>Perfect-day bonus when every habit key is down.</span></li>
-            <li><b>+30 XP</b><span>Day cleared: complete every task planned for a day (two or more).</span></li>
+            <li><b>10 XP</b><span>for every habit you press.</span></li>
+            <li><b>Rest day</b><span>Miss one day and your streak survives. Miss two in a row, or a second day within the same week, and it resets.</span></li>
+            <li><b>+10 XP</b><span>Perfect-day bonus when every habit key is down.</span></li>
             <li><b>Level up</b><span>Each level needs 100 XP more than the one before. Each key you press in a day plays the next note up the scale.</span></li>
           </ul>
         </section>
@@ -499,7 +502,7 @@ textarea.field{resize:vertical;min-height:84px;font:500 15px/1.45 var(--font-dis
 
 <button type="button" class="fab" id="fab" aria-label="Add task"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
 
-<nav class="tabbar" role="tablist" aria-label="Sections">
+<nav class="tabbar" role="tablist" aria-label="Sections" hidden style="display:none">
   <button type="button" class="tab" role="tab" id="tabPlan" data-tab="plan" aria-selected="false">
     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="2.5" width="6.5" height="9" rx="3.25" fill="currentColor"/><rect x="5" y="14.5" width="4.5" height="7" rx="2.25" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 7h6.5M14 18h6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Plan
   </button>
@@ -602,7 +605,7 @@ const EMOJI = ['📝','💼','💻','📞','✉️','📊','🧠','🎯','🏋�
 const REPEATS = [['none','Never'],['daily','Every day'],['weekdays','Weekdays'],['weekly','Every week'],['monthly','Every month']];
 const DURS = [15, 30, 45, 60, 90, 120];
 const RANKS = ['Rookie','Starter','Regular','Committed','Disciplined','Relentless','Machine','Unbreakable','Legend'];
-const BASE = 10, STREAK_STEP = 2, STREAK_CAP = 20, PERFECT_BONUS = 50, CRIT = .15, JACK = .03, MAX_HABITS = 12, SEGS = 24;
+const BASE = 10, STREAK_STEP = 0, STREAK_CAP = 0, PERFECT_BONUS = 10, CRIT = 0, JACK = 0, MAX_HABITS = 12, SEGS = 24;
 const TASK_BASE = 10, DAY_CLEAR_BONUS = 30;
 const LS_KEY = 'keystreak.v1', TAB_KEY = 'keystreak.tab';
 const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -670,7 +673,7 @@ let state = normalize(loadLocal());
 let today = dstr(new Date());
 let selDate = today;     // habits day
 let planDate = today;    // plan day
-let tab = (() => { try { const t = localStorage.getItem(TAB_KEY); return ['plan','habits','inbox'].includes(t) ? t : 'plan'; } catch(e){ return 'plan'; } })();
+let tab = 'habits'; // habits-only: Plan and Inbox are switched off
 
 /* ---------- habit logic ---------- */
 const active = () => state.habits.filter(h => !h.archived);
@@ -678,10 +681,30 @@ const habit = id => state.habits.find(h => h.id === id);
 const dayLog = d => state.log[d] || {};
 const doneCount = d => { const l = dayLog(d); return active().filter(h => l[h.id] != null).length; };
 function isPerfect(d){ const a = active(); if (!a.length) return false; const l = state.log[d]; if (!l) return false; return a.every(h => l[h.id] != null); }
-function habitStreakEnding(hid, d){ let n = 0; while (state.log[d] && state.log[d][hid] != null){ n++; d = addDays(d, -1); } return n; }
-function liveHabitStreak(hid, ref){ return dayLog(ref)[hid] != null ? habitStreakEnding(hid, ref) : habitStreakEnding(hid, addDays(ref, -1)); }
-function perfectStreakEnding(d){ let n = 0; while (isPerfect(d)){ n++; d = addDays(d, -1); } return n; }
-function livePerfectStreak(){ return isPerfect(today) ? perfectStreakEnding(today) : perfectStreakEnding(addDays(today, -1)); }
+/* Forgiving streaks: one missed day is forgiven, but not two in a row, and
+   not twice within the same 7 days. A forgiven day keeps the streak alive
+   without adding to it. `gapUsed` means the day just after d was already forgiven. */
+function streakWalk(has, d, gapUsed){
+  let n = 0, since = gapUsed ? 1 : 99;
+  for (let g = 0; g < 4000; g++){
+    if (has(d)){ n++; since++; }
+    else if (n > 0 && since >= 7 && has(addDays(d, -1))) since = 1;
+    else break;
+    d = addDays(d, -1);
+  }
+  return n;
+}
+const habitDone = (hid, d) => !!(state.log[d] && state.log[d][hid] != null);
+function streakBefore(has, d){
+  const y = addDays(d, -1);
+  if (has(y)) return streakWalk(has, y, false);
+  if (has(addDays(y, -1))) return streakWalk(has, addDays(y, -1), true);
+  return 0;
+}
+function habitStreakEnding(hid, d){ return streakWalk(x => habitDone(hid, x), d, false); }
+function liveHabitStreak(hid, ref){ const has = x => habitDone(hid, x); return has(ref) ? streakWalk(has, ref, false) : streakBefore(has, ref); }
+function perfectStreakEnding(d){ return streakWalk(isPerfect, d, false); }
+function livePerfectStreak(){ return isPerfect(today) ? perfectStreakEnding(today) : streakBefore(isPerfect, today); }
 function totalXP(){
   let t = 0;
   for (const d in state.log) for (const k in state.log[d]) t += (+state.log[d][k] || 0);
@@ -700,11 +723,17 @@ function roll(d, hid){
   return (h >>> 0) / 4294967296;
 }
 function multFor(d, id){ const r = roll(d, id); return r < JACK ? 5 : r < JACK + CRIT ? 2 : 1; }
-function potentialXP(hid, d){ return BASE + Math.min(habitStreakEnding(hid, addDays(d, -1)) * STREAK_STEP, STREAK_CAP); }
+function potentialXP(hid, d){ return BASE + Math.min(streakBefore(x => habitDone(hid, x), d) * STREAK_STEP, STREAK_CAP); }
 function bestPerfect(){
   const days = Object.keys(state.log).sort(); if (!days.length) return 0;
   let best = 0, run = 0, d = days[0], guard = 0;
-  while (d <= today && guard++ < 4000){ if (isPerfect(d)){ run++; if (run > best) best = run; } else run = 0; d = addDays(d, 1); }
+  let since = 99;
+  while (d <= today && guard++ < 4000){
+    if (isPerfect(d)){ run++; since++; if (run > best) best = run; }
+    else if (run > 0 && since >= 7 && isPerfect(addDays(d, 1))) since = 1;   // forgiven rest day
+    else { run = 0; since = 99; }
+    d = addDays(d, 1);
+  }
   return best;
 }
 
@@ -1251,7 +1280,8 @@ function renderKeys(){
     el.querySelector('.key-name').textContent = h.name;
     el.querySelector('.key-num').textContent = i < 9 ? String(i + 1) : '';
     const s = liveHabitStreak(h.id, selDate), st = el.querySelector('.key-streak');
-    st.innerHTML = s ? FLAME + '<span>' + s + (s === 1 ? ' day' : ' days') + '</span>' : '<span>New streak</span>';
+    const rested = s && !on && !habitDone(h.id, addDays(selDate, -1));
+    st.innerHTML = s ? FLAME + '<span>' + s + (s === 1 ? ' day' : ' days') + (rested ? ' · rest day' : '') + '</span>' : '<span>New streak</span>';
     st.classList.toggle('hot', s >= 3);
     const xe = el.querySelector('.key-xp');
     if (on){ const m = multFor(selDate, h.id); xe.innerHTML = (m > 1 ? '<span class="tag">' + (m === 5 ? 'JACKPOT' : 'CRIT') + ' ×' + m + '</span>' : '') + '<span>+' + (+l[h.id] || 0) + '</span>'; }
@@ -1279,21 +1309,46 @@ function renderWeek(){
     w.appendChild(b);
   }
 }
+let heatSel = 'all';   // 'all' or a habit id
 function renderHeat(){
-  const h = $('#heat'); h.innerHTML = ''; const tot = active().length;
-  const dow = (parse(today).getDay() + 6) % 7; let d = addDays(today, -dow - 15 * 7);
+  const habits = active();
+  if (heatSel !== 'all' && !habits.some(h => h.id === heatSel)) heatSel = 'all';
+  const pick = $('#heatPick'); pick.innerHTML = '';
+  [{id: 'all', name: 'All habits'}].concat(habits).forEach(h => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = h.name;
+    const p = h.id === 'all' ? {hex: 'var(--signal)', ink: 'var(--signal-ink)'} : pal(h.color);
+    b.style.setProperty('--hc', p.hex); b.style.setProperty('--hc-ink', p.ink);
+    b.setAttribute('aria-pressed', h.id === heatSel ? 'true' : 'false');
+    b.addEventListener('click', () => { heatSel = h.id; renderHeat(); });
+    pick.appendChild(b);
+  });
+  const one = heatSel === 'all' ? null : habits.find(h => h.id === heatSel);
+  const grid = $('#heat'); grid.innerHTML = '';
+  [grid, $('#heatLegend')].forEach(el => el.style.setProperty('--hc', one ? pal(one.color).hex : 'var(--signal)'));
+  $('#heatLegend').innerHTML = one
+    ? 'Missed <span class="cell"></span><span class="cell on"></span> Done'
+    : 'Less <span class="cell"></span><span class="cell l1"></span><span class="cell l2"></span><span class="cell l3"></span><span class="cell l4"></span> All';
+  const tot = habits.length, dow = (parse(today).getDay() + 6) % 7; let d = addDays(today, -dow - 15 * 7), count = 0;
   for (let i = 0; i < 16 * 7; i++){
     const c = document.createElement('span'); c.className = 'cell';
     if (d > today) c.classList.add('future');
     else {
-      const done = doneCount(d), f = tot ? done / tot : 0;
-      const lv = f === 0 ? 0 : f >= 1 ? 4 : f > .67 ? 3 : f > .34 ? 2 : 1;
-      if (lv) c.classList.add('l' + lv);
+      if (one){
+        const on = habitDone(one.id, d);
+        if (on){ c.classList.add('on'); count++; }
+        c.title = fmtLong(d) + (on ? ': done' : ': missed');
+      } else {
+        const done = doneCount(d), f = tot ? done / tot : 0;
+        const lv = f === 0 ? 0 : f >= 1 ? 4 : f > .67 ? 3 : f > .34 ? 2 : 1;
+        if (lv) c.classList.add('l' + lv);
+        if (lv === 4) count++;
+        c.title = fmtLong(d) + ': ' + done + ' of ' + tot;
+      }
       if (d === today) c.classList.add('today');
-      c.title = fmtLong(d) + ': ' + done + ' of ' + tot;
     }
-    h.appendChild(c); d = addDays(d, 1);
+    grid.appendChild(c); d = addDays(d, 1);
   }
+  $('#heatCount').textContent = one ? count + (count === 1 ? ' day' : ' days') + ' done in 16 weeks' : count + (count === 1 ? ' perfect day' : ' perfect days') + ' in 16 weeks';
 }
 function renderStats(){
   let presses = 0, perfect = 0, tasksDone = 0;
